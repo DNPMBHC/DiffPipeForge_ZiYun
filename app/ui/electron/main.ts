@@ -194,7 +194,8 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('quit-and-install', () => {
-    autoUpdater.quitAndInstall();
+    // Disable silent install to show full installer UI (allows directory selection)
+    autoUpdater.quitAndInstall(false, true);
   });
 
   autoUpdater.on('checking-for-update', () => {
