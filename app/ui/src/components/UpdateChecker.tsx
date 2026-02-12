@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { RefreshCw, Download, RotateCcw } from 'lucide-react';
 import { GlassButton } from './ui/GlassButton';
 import { useGlassToast } from './ui/GlassToast';
+import { GlassConfirmDialog } from './ui/GlassConfirmDialog';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 
@@ -10,6 +11,8 @@ export function UpdateChecker() {
     const { showToast } = useGlassToast();
     const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'>('idle');
     const [progress, setProgress] = useState(0);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [updateVersion, setUpdateVersion] = useState('');
 
     useEffect(() => {
         // @ts-ignore
@@ -20,7 +23,8 @@ export function UpdateChecker() {
                 setStatus('checking');
             } else if (data.status === 'available') {
                 setStatus('available');
-                showToast(t('update.available', { version: data.info.version }) || `New version available: ${data.info.version}`, 'success');
+                setUpdateVersion(data.info.version);
+                setShowConfirm(true);
             } else if (data.status === 'not-available') {
                 setStatus('idle');
                 showToast(t('update.not_available') || 'You are on the latest version', 'success');
@@ -54,6 +58,18 @@ export function UpdateChecker() {
         } catch (e) {
             console.error(e);
             setStatus('error'); // Ensure we exit checking state on error
+        }
+    };
+
+    const handleConfirmUpdate = async () => {
+        try {
+            // @ts-ignore
+            await window.ipcRenderer.invoke('download-update');
+            setStatus('downloading');
+        } catch (e) {
+            console.error(e);
+            showToast("Failed to start download", 'error');
+            setStatus('error');
         }
     };
 
@@ -96,21 +112,43 @@ export function UpdateChecker() {
     }
 
     return (
-        <GlassButton
-            onClick={checkForUpdates}
-            disabled={status === 'checking'}
-            variant="outline"
-            className={cn(
-                "gap-2 px-4 border-primary/20 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all duration-300 backdrop-blur-sm",
-                status === 'checking' && "opacity-70 cursor-wait"
-            )}
-            title={t('update.check_tooltip') || "Check for updates"}
-        >
-            <RefreshCw className={cn(
-                "w-4 h-4",
-                status === 'checking' && "animate-spin text-primary"
-            )} />
-            <span className="font-medium">{status === 'checking' ? (t('update.checking') || 'Checking...') : (t('update.check') || 'Check for Updates')}</span>
-        </GlassButton>
+        <>
+            <GlassButton
+                onClick={checkForUpdates}
+                disabled={status === 'checking'}
+                variant="outline"
+                className={cn(
+                    "gap-2 px-4 border-primary/20 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all duration-300 backdrop-blur-sm",
+                    status === 'checking' && "opacity-70 cursor-wait"
+                )}
+                title={t('update.check_tooltip') || "Check for updates"}
+            >
+                <RefreshCw className={cn(
+                    "w-4 h-4",
+                    status === 'checking' && "animate-spin text-primary"
+                )} />
+                <span className="font-medium">{status === 'checking' ? (t('update.checking') || 'Checking...') : (t('update.check') || 'Check for Updates')}</span>
+            </GlassButton>
+
+            <GlassConfirmDialog
+                isOpen={showConfirm}
+                onClose={() => {
+                    setShowConfirm(false);
+                    setStatus('idle');
+                }}
+                onConfirm={handleConfirmUpdate}
+                title={t('update.confirm_title') || "Update Available"}
+                description={
+                    <div className="space-y-2">
+                        <p>{t('update.confirm_desc', { version: updateVersion }) || `A new version (${updateVersion}) is available.`}</p>
+                        <p className="text-xs text-muted-foreground">
+                            {t('update.confirm_ask') || "Would you like to download and install it now?"}
+                        </p>
+                    </div>
+                }
+                confirmText={t('update.confirm_yes') || "Update Now"}
+                cancelText={t('update.confirm_no') || "Later"}
+            />
+        </>
     );
 }

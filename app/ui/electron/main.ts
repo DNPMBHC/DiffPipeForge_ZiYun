@@ -174,6 +174,9 @@ app.whenReady().then(() => {
   createWindow()
 
   // --- Auto Updater Logic ---
+  // Disable auto downloading of updates
+  autoUpdater.autoDownload = false;
+
   ipcMain.handle('check-for-updates', () => {
     if (!app.isPackaged) {
       console.log("[AutoUpdate] Not packaged, skipping update check");
@@ -182,6 +185,12 @@ app.whenReady().then(() => {
     console.log("[AutoUpdate] Checking for updates...");
     autoUpdater.checkForUpdatesAndNotify();
     return { status: 'checking' };
+  });
+
+  ipcMain.handle('download-update', () => {
+    console.log("[AutoUpdate] User confirmed download, starting...");
+    autoUpdater.downloadUpdate();
+    return { success: true };
   });
 
   ipcMain.handle('quit-and-install', () => {
@@ -193,6 +202,7 @@ app.whenReady().then(() => {
   });
 
   autoUpdater.on('update-available', (info: any) => {
+    // Just notify, do not download automatically
     win?.webContents.send('update-status', { status: 'available', info });
   });
 
