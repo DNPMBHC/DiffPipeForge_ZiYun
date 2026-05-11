@@ -92,7 +92,7 @@ export function TrainingConfig({ data, modelType, onChange, validationEnabled = 
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-1.5">
                                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {t('training.layer_offloading')}
+                                    启用分层加载
                                 </span>
                                 <HelpIcon text={t('help.layer_offloading')} />
                             </div>
@@ -119,7 +119,7 @@ export function TrainingConfig({ data, modelType, onChange, validationEnabled = 
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5">
                                         <label htmlFor="layer_offloading_percent" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('training.layer_offloading_percent')}
+                                            分层加载比例 (%)
                                         </label>
                                         <HelpIcon text={t('help.layer_offloading_percent')} />
                                     </div>
@@ -142,7 +142,7 @@ export function TrainingConfig({ data, modelType, onChange, validationEnabled = 
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5">
                                         <label htmlFor="layer_offloading_text_encoder_percent" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('training.layer_offloading_text_encoder_percent')}
+                                            文本编码器卸载比例 (%)
                                         </label>
                                         <HelpIcon text={t('help.layer_offloading_text_encoder_percent')} />
                                     </div>
