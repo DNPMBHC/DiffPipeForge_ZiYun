@@ -76,7 +76,23 @@ process.on('uncaughtException', (error) => {
 
 process.env.APP_ROOT = path.join(__dirname, '..')
 
-export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
+function normalizeDevServerUrl(url: string | undefined) {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.hostname === 'localhost') {
+      parsedUrl.hostname = '127.0.0.1';
+    }
+    return parsedUrl.toString();
+  } catch {
+    return url.replace('localhost', '127.0.0.1');
+  }
+}
+
+export const VITE_DEV_SERVER_URL = normalizeDevServerUrl(process.env['VITE_DEV_SERVER_URL'])
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
@@ -128,6 +144,37 @@ const saveSettings = (settings: AppSettings) => {
   }
 };
 
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+async function loadDevServerWithRetry(targetWindow: BrowserWindow, url: string) {
+  const maxAttempts = 60;
+  const intervalMs = 500;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (targetWindow.isDestroyed()) {
+      return;
+    }
+
+    try {
+      console.log(`Loading renderer from ${url}, attempt ${attempt}/${maxAttempts}`);
+      await targetWindow.loadURL(url);
+      return;
+    } catch (error) {
+      console.error(`Renderer load failed on attempt ${attempt}/${maxAttempts}:`, error);
+      if (attempt < maxAttempts) {
+        await wait(intervalMs);
+      }
+    }
+  }
+
+  if (!targetWindow.isDestroyed()) {
+    dialog.showErrorBox(
+      '启动失败',
+      `前端服务未能启动或不可访问：${url}\n请确认 Vite 服务仍在运行，并检查端口是否被占用。`
+    );
+  }
+}
+
 
 function createWindow() {
   console.log("createWindow called");
@@ -150,7 +197,7 @@ function createWindow() {
   })
 
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
+    loadDevServerWithRetry(win, VITE_DEV_SERVER_URL)
   } else {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
