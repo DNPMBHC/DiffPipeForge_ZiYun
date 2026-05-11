@@ -178,16 +178,6 @@ def _parse_layer_offloading_percent(value):
 
 
 def _resolve_blocks_to_swap(config, model):
-    raw_blocks_to_swap = config.get('blocks_to_swap', 0)
-    try:
-        explicit_blocks_to_swap = int(raw_blocks_to_swap)
-    except (TypeError, ValueError):
-        explicit_blocks_to_swap = 0
-    explicit_blocks_to_swap = max(0, explicit_blocks_to_swap)
-
-    if explicit_blocks_to_swap > 0:
-        return explicit_blocks_to_swap, False, None
-
     model_config = config.get('model', {})
     layer_offloading = _parse_bool(
         config.get('layer_offloading', model_config.get('layer_offloading', False))
@@ -212,9 +202,19 @@ def _resolve_blocks_to_swap(config, model):
     if transformer_offload_percent > 0:
         print(
             f'MemoryManager enabled (percent={transformer_offload_percent}). '
-            'Disabling auto-Block Swapping to prevent conflict.'
+            'Disabling Block Swapping to prevent conflict.'
         )
         return 0, False, None
+
+    raw_blocks_to_swap = config.get('blocks_to_swap', 0)
+    try:
+        explicit_blocks_to_swap = int(raw_blocks_to_swap)
+    except (TypeError, ValueError):
+        explicit_blocks_to_swap = 0
+    explicit_blocks_to_swap = max(0, explicit_blocks_to_swap)
+
+    if explicit_blocks_to_swap > 0:
+        return explicit_blocks_to_swap, False, None
 
     layer_offloading_percent = _parse_layer_offloading_percent(layer_offloading_percent_value)
     if not layer_offloading or layer_offloading_percent <= 0:
@@ -563,6 +563,32 @@ if __name__ == '__main__':
         eval_data_map[name] = dataset_util.Dataset(eval_dataset_config, model, skip_dataset_validation=args.i_know_what_i_am_doing)
         dataset_manager.register(eval_data_map[name])
 
+    text_encoder_offload_percent = _parse_layer_offloading_percent(
+        config.get('layer_offloading_text_encoder_percent', 0.0)
+    )
+    if world_size > 1 and text_encoder_offload_percent > 0:
+        print(
+            f'Text Encoder MemoryManager disabled because distributed world_size={world_size}. '
+            'Layer offloading is only supported for single-GPU training.'
+        )
+        text_encoder_offload_percent = 0.0
+
+    if text_encoder_offload_percent > 0:
+        text_encoder_modules = [m for m in dataset_manager.text_encoders if isinstance(m, torch.nn.Module)]
+        if text_encoder_modules:
+            for idx, text_encoder_module in enumerate(text_encoder_modules, start=1):
+                print(
+                    f'Enabling MemoryManager for Text Encoder {idx} '
+                    f'with offload_percent={text_encoder_offload_percent}'
+                )
+                MemoryManager.attach(
+                    text_encoder_module,
+                    torch.device('cuda'),
+                    offload_percent=text_encoder_offload_percent,
+                )
+        else:
+            print('Warning: No torch.nn.Module text encoders found for MemoryManager.')
+
     # For testing
 
     # import imageio
@@ -699,6 +725,14 @@ if __name__ == '__main__':
 
     network_offload = config.get('network_layer_offloading', False)
     memory_manager_active = False
+
+    if world_size > 1 and (transformer_offload_percent > 0 or network_offload):
+        print(
+            f'MemoryManager disabled because distributed world_size={world_size}. '
+            'Layer offloading is only supported for single-GPU training.'
+        )
+        transformer_offload_percent = 0.0
+        network_offload = False
 
     if transformer_offload_percent > 0 or network_offload:
         memory_manager_active = True

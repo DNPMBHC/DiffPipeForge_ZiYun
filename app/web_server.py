@@ -5,6 +5,8 @@ import sys
 import subprocess
 import threading
 import socketserver
+import shutil
+from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
 PORT = 5001
@@ -45,6 +47,12 @@ class IPCHandler(http.server.BaseHTTPRequestHandler):
         if channel == 'get-language':
             settings = self.load_settings()
             return settings.get('language', 'zh')
+
+        elif channel == 'set-language':
+            settings = self.load_settings()
+            settings['language'] = args[0] if args else 'zh'
+            self.save_settings(settings)
+            return {"success": True}
         
         elif channel == 'get-theme':
             settings = self.load_settings()
@@ -102,7 +110,6 @@ class IPCHandler(http.server.BaseHTTPRequestHandler):
 
         elif channel == 'read-project-folder':
             folder_path = args[0]
-            # Mimic Electron's read-project-folder logic
             result = {}
             mapping = {
                 'dataset.toml': 'datasetConfig',
@@ -117,6 +124,52 @@ class IPCHandler(http.server.BaseHTTPRequestHandler):
                             result[key] = f.read()
                     except: pass
             return result
+
+        elif channel == 'create-new-project':
+            path = self.create_date_folder()
+            return {"success": True, "path": path}
+
+        elif channel == 'copy-folder-configs-to-date':
+            source_folder = args[0].get('sourceFolderPath') if args else None
+            output_folder = self.create_date_folder()
+            if source_folder and os.path.isdir(source_folder):
+                for filename in ('trainconfig.toml', 'dataset.toml', 'evaldataset.toml'):
+                    source_path = os.path.join(source_folder, filename)
+                    if os.path.exists(source_path):
+                        shutil.copy2(source_path, os.path.join(output_folder, filename))
+            return {"success": True, "outputFolder": output_folder}
+
+        elif channel == 'copy-to-date-folder':
+            payload = args[0] if args else {}
+            source_path = payload.get('sourcePath')
+            filename = payload.get('filename') or os.path.basename(source_path or '')
+            output_folder = self.create_date_folder()
+            target_path = os.path.join(output_folder, filename)
+            if source_path and os.path.exists(source_path):
+                shutil.copy2(source_path, target_path)
+                return {"success": True, "path": target_path}
+            return {"success": False, "error": "Source file not found"}
+
+        elif channel == 'save-to-date-folder':
+            payload = args[0] if args else {}
+            output_folder = self.create_date_folder()
+            target_path = os.path.join(output_folder, payload.get('filename', 'file.txt'))
+            with open(target_path, 'w', encoding='utf-8') as f:
+                f.write(payload.get('content', ''))
+            return {"success": True, "path": target_path}
+
+        elif channel == 'delete-project-folder':
+            project_path = args[0] if args else None
+            if project_path and os.path.isdir(project_path):
+                shutil.rmtree(project_path)
+            settings = self.load_settings()
+            recent = [p for p in settings.get('recentProjects', []) if p.get('path') != project_path]
+            settings['recentProjects'] = recent
+            self.save_settings(settings)
+            return {"success": True, "projects": recent}
+
+        elif channel == 'dialog:openFile':
+            return {"canceled": True, "filePaths": []}
 
         elif channel == 'set-session-folder':
             # In browser mode, we don't have a global session state in Python yet
@@ -137,6 +190,12 @@ class IPCHandler(http.server.BaseHTTPRequestHandler):
             return {"status": "NOT_IMPLEMENTED", "message": "Backend streaming not supported in simple bridge"}
 
         return {"error": f"Unknown channel: {channel}"}
+
+    def create_date_folder(self):
+        timestamp = datetime.now().strftime('%Y%m%d_%H-%M-%S')
+        folder_path = os.path.join(APP_ROOT_DIR, 'output', timestamp)
+        os.makedirs(folder_path, exist_ok=True)
+        return folder_path
 
     def save_settings(self, settings):
         try:

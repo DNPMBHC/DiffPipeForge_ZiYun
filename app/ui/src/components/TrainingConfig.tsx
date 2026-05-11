@@ -5,6 +5,7 @@ import { GlassSelect } from './ui/GlassSelect';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import { HelpIcon } from './ui/HelpIcon';
+import { cn } from '@/lib/utils';
 
 export interface TrainingConfigProps {
     data: any;
@@ -86,7 +87,82 @@ export function TrainingConfig({ data, modelType, onChange, validationEnabled = 
                     />
 
                     <GlassInput label={t('training.pipeline_stages')} helpText={t('help.pipeline_stages')} name="pipeline_stages" type="number" value={data.pipeline_stages ?? 1} onChange={handleChange} />
-                    <GlassInput label={t('training.blocks_to_swap')} helpText={t('help.blocks_to_swap')} name="blocks_to_swap" type="number" min={0} value={data.blocks_to_swap ?? 0} onChange={handleChange} />
+                    <GlassInput label={t('training.blocks_to_swap')} helpText={t('help.blocks_to_swap')} name="blocks_to_swap" type="number" min={0} value={data.blocks_to_swap ?? 0} onChange={handleChange} disabled={!!data.layer_offloading} />
+                    <div className="md:col-span-3 rounded-xl border border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-md p-4 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    启用分层加载
+                                </span>
+                                <HelpIcon text={t('help.layer_offloading')} />
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={!!data.layer_offloading}
+                                onClick={() => onChange({ ...data, layer_offloading: !data.layer_offloading })}
+                                className={cn(
+                                    "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                                    data.layer_offloading ? "bg-primary" : "bg-gray-300 dark:bg-gray-700"
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "pointer-events-none inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow-lg ring-0 transition-transform duration-200",
+                                        data.layer_offloading ? "translate-x-5" : "translate-x-0.5"
+                                    )}
+                                />
+                            </button>
+                        </div>
+                        <div className="grid gap-5 md:grid-cols-2">
+                            <div className={cn("space-y-2 transition-opacity", !data.layer_offloading && "opacity-50")}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <label htmlFor="layer_offloading_percent" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            分层加载比例 (%)
+                                        </label>
+                                        <HelpIcon text={t('help.layer_offloading_percent')} />
+                                    </div>
+                                    <span className="text-xs font-medium text-muted-foreground tabular-nums">{data.layer_offloading_percent ?? 50}%</span>
+                                </div>
+                                <input
+                                    id="layer_offloading_percent"
+                                    name="layer_offloading_percent"
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={data.layer_offloading_percent ?? 50}
+                                    onChange={handleChange}
+                                    disabled={!data.layer_offloading}
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gray-200 dark:bg-gray-800 accent-primary disabled:cursor-not-allowed"
+                                />
+                            </div>
+                            <div className={cn("space-y-2 transition-opacity", !data.layer_offloading && "opacity-50")}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <label htmlFor="layer_offloading_text_encoder_percent" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            文本编码器卸载比例 (%)
+                                        </label>
+                                        <HelpIcon text={t('help.layer_offloading_text_encoder_percent')} />
+                                    </div>
+                                    <span className="text-xs font-medium text-muted-foreground tabular-nums">{data.layer_offloading_text_encoder_percent ?? 100}%</span>
+                                </div>
+                                <input
+                                    id="layer_offloading_text_encoder_percent"
+                                    name="layer_offloading_text_encoder_percent"
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    step={1}
+                                    value={data.layer_offloading_text_encoder_percent ?? 100}
+                                    onChange={handleChange}
+                                    disabled={!data.layer_offloading}
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer bg-gray-200 dark:bg-gray-800 accent-primary disabled:cursor-not-allowed"
+                                />
+                            </div>
+                        </div>
+                    </div>
                     <GlassInput label={t('training.caching_batch_size')} helpText={t('help.caching_batch_size')} name="caching_batch_size" type="number" value={data.caching_batch_size ?? 1} onChange={handleChange} />
 
                     {isVideoModel && (
