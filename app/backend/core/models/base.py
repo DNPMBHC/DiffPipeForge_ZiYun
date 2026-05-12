@@ -6,8 +6,6 @@ import sys
 from collections import defaultdict
 import types
 sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../submodules/ComfyUI'))
-# Avoids using comfy_kitchen RoPE implementations that don't have backward defined
-model_management.in_training = True
 
 import peft
 import torch
@@ -25,6 +23,8 @@ import comfy.sd
 import comfy.sd1_clip
 from comfy.sd1_clip import SD1Tokenizer
 from comfy import model_management
+
+model_management.in_training = True
 
 
 def make_contiguous(*tensors):
