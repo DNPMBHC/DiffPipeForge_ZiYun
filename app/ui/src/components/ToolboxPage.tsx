@@ -13,9 +13,10 @@ import { AspectRatioStats } from './tools/AspectRatioStats';
 import { VideoFrameStats } from './tools/VideoFrameStats';
 import { ImageConverter } from './tools/ImageConverter';
 import { StyleFilter } from './tools/StyleFilter';
-import { Video, RefreshCw, Scissors } from 'lucide-react';
+import { Video, RefreshCw, Scissors, FlipHorizontal2 } from 'lucide-react';
+import { MirrorFlipTool } from './tools/MirrorFlipTool';
 
-export type ToolCategory = 'tagging' | 'mask' | 'quality' | 'dedup' | 'rename' | 'aspect' | 'video' | 'convert' | 'filter';
+export type ToolCategory = 'tagging' | 'mask' | 'quality' | 'dedup' | 'rename' | 'aspect' | 'video' | 'convert' | 'filter' | 'mirror';
 
 export function ToolboxPage() {
     const { t } = useTranslation();
@@ -32,6 +33,7 @@ export function ToolboxPage() {
         { id: 'aspect', label: t('toolbox.categories.aspect'), icon: BarChartHorizontal },
         { id: 'video', label: t('toolbox.categories.video'), icon: Video },
         { id: 'convert', label: t('toolbox.categories.convert'), icon: RefreshCw },
+        { id: 'mirror', label: t('toolbox.categories.mirror'), icon: FlipHorizontal2 },
     ] as const;
 
     useEffect(() => {
@@ -93,6 +95,7 @@ export function ToolboxPage() {
                     {activeCategory === 'aspect' && <AspectRatioStats />}
                     {activeCategory === 'video' && <VideoFrameStats />}
                     {activeCategory === 'convert' && <ImageConverter />}
+                    {activeCategory === 'mirror' && <MirrorFlipTool />}
                 </div>
             </Section>
         </div>

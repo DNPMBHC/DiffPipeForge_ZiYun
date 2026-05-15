@@ -95,7 +95,8 @@
             "video": "视频处理",
             "convert": "格式转换",
             "filter": "风格筛选",
-            "mask": "遮罩生成"
+            "mask": "遮罩生成",
+            "mirror": "镜像翻转"
         },
         "mask": {
             "title": "遮罩生成",
@@ -281,6 +282,23 @@
             "started": "转换任务已启动",
             "finished": "转换任务已完成",
             "stopped": "转换任务已停止"
+        },
+        "mirror": {
+            "title": "镜像翻转",
+            "input_dir": "媒体目录",
+            "output_hint": "输出文件会保存在源文件所在目录，命名为 xxx_fliped.ext，不覆盖原文件。",
+            "config": "翻转设置",
+            "mode": "翻转方向",
+            "horizontal": "水平镜像",
+            "vertical": "垂直翻转",
+            "both": "水平 + 垂直",
+            "media_type": "处理类型",
+            "all_media": "图片 + 视频",
+            "images_only": "仅图片",
+            "videos_only": "仅视频",
+            "started": "镜像翻转任务已启动",
+            "finished": "镜像翻转任务已完成",
+            "stopped": "镜像翻转任务已停止"
         },
         "style_filter": {
             "title": "风格筛选",

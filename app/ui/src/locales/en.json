@@ -95,7 +95,8 @@
             "video": "Video Processing",
             "convert": "Format Converter",
             "filter": "Style Filter",
-            "mask": "Mask Generator"
+            "mask": "Mask Generator",
+            "mirror": "Mirror Flip"
         },
         "mask": {
             "title": "Mask Generator",
@@ -281,6 +282,23 @@
             "started": "Conversion started",
             "finished": "Conversion finished",
             "stopped": "Conversion stopped"
+        },
+        "mirror": {
+            "title": "Mirror Flip",
+            "input_dir": "Media Directory",
+            "output_hint": "Output files are saved next to the source as xxx_fliped.ext. Source files are never overwritten.",
+            "config": "Flip Settings",
+            "mode": "Flip Direction",
+            "horizontal": "Horizontal Mirror",
+            "vertical": "Vertical Flip",
+            "both": "Horizontal + Vertical",
+            "media_type": "Media Type",
+            "all_media": "Images + Videos",
+            "images_only": "Images Only",
+            "videos_only": "Videos Only",
+            "started": "Mirror flip started",
+            "finished": "Mirror flip finished",
+            "stopped": "Mirror flip stopped"
         },
         "style_filter": {
             "title": "Style Filter",
