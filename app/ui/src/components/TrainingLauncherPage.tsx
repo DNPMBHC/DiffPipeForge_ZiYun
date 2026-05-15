@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from 'react';
 import { Play, Square, Settings, FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +39,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
     // Initial check for training status and status updates
     useEffect(() => {
         const checkStatus = async () => {
-            const status = await window.ipcRenderer.invoke('get-training-status');
+            const status = await ipc.invoke('get-training-status');
             setIsTraining(status.running);
         };
         checkStatus();
@@ -48,7 +49,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
             if (status.type === 'finished' || status.type === 'error') setIsTraining(false);
         };
 
-        const removeStatus = (window.ipcRenderer as any).on('training-status', handleStatus);
+        const removeStatus = (ipc as any).on('training-status', handleStatus);
         return () => {
             removeStatus();
         };
@@ -62,7 +63,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
                 return;
             }
             try {
-                const savedParams = await window.ipcRenderer.invoke('get-project-launch-params', projectPath);
+                const savedParams = await ipc.invoke('get-project-launch-params', projectPath);
                 if (savedParams && Object.keys(savedParams).length > 0) {
                     setStartParams(prev => ({
                         ...prev,
@@ -96,7 +97,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
         if (!isLoaded || !projectPath) return;
 
         const timer = setTimeout(() => {
-            window.ipcRenderer.invoke('save-project-launch-params', {
+            ipc.invoke('save-project-launch-params', {
                 projectPath,
                 params: startParams
             });
@@ -111,7 +112,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
             if (!projectPath) return;
             const configPath = `${projectPath}/trainconfig.toml`;
             try {
-                const content = await window.ipcRenderer.invoke('read-file', configPath);
+                const content = await ipc.invoke('read-file', configPath);
                 if (content) {
                     const parsed = parse(content) as any;
                     let outputDir = parsed.output_dir || '';
@@ -141,7 +142,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
 
         try {
             if (isTraining) {
-                const stop = await window.ipcRenderer.invoke('stop-training');
+                const stop = await ipc.invoke('stop-training');
                 if (stop.success) {
                     setIsTraining(false);
                     showToast(t('training.training_stopped'), 'success');
@@ -155,7 +156,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
 
             setIsTraining(true);
 
-            const results = await window.ipcRenderer.invoke('start-training', {
+            const results = await ipc.invoke('start-training', {
                 configPath: configPath,
                 ...startParams
             });
@@ -221,7 +222,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
                                 onClick={async () => {
                                     if (!configSummary?.output_dir) return;
                                     console.log("[Launcher] Requesting to open folder:", configSummary.output_dir);
-                                    const success = await window.ipcRenderer.invoke('open-folder', configSummary.output_dir);
+                                    const success = await ipc.invoke('open-folder', configSummary.output_dir);
                                     console.log("[Launcher] Open folder result:", success);
                                     if (!success) {
                                         showToast(`Failed to open: ${configSummary.output_dir}`, 'error');

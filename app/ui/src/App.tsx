@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from 'react';
 import AppLayout from './components/Layout';
 import { ProjectSelectionPage } from './components/ProjectSelectionPage';
@@ -5,39 +6,11 @@ import { GlassToastProvider } from './components/ui/GlassToast';
 import { WindowTitleBar } from './components/ui/WindowTitleBar';
 import { useTranslation } from 'react-i18next';
 
-// Web Fallback for Cloud/Browser mode
-if (typeof window !== 'undefined' && !window.ipcRenderer) {
-    (window as any).ipcRenderer = {
-        invoke: async (channel: string, ...args: any[]) => {
-            console.log(`[WebBridge] Invoking ${channel}`, args);
-            try {
-                // Use relative path to take advantage of Vite proxy
-                const response = await fetch('/ipc', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ channel, args })
-                });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                return data;
-            } catch (e) {
-                console.error(`[WebBridge] Failed to invoke ${channel}:`, e);
-                // Return defaults to prevent component crashes
-                if (channel === 'get-recent-projects') return [];
-                if (channel === 'get-language') return 'zh';
-                if (channel === 'get-theme') return 'dark';
-                return {};
-            }
-        },
-        on: (channel: string, _callback: any) => {
-            console.warn(`[WebBridge] 'on' is not fully supported in browser mode: ${channel}`);
-        },
-        send: (channel: string, ...args: any[]) => {
-            console.log(`[WebBridge] Sending ${channel}`, args);
-        }
-    };
-}
-
+// Note: web/browser fallback for IPC is now handled by `@/lib/ipc` (the
+// `ipc` facade auto-routes to HTTP/WebSocket when `window.ipcRenderer`
+// is absent). The previous inline fallback that re-installed
+// `window.ipcRenderer` has been removed because it cannot affect the
+// `ipc` reference captured at module load time.
 
 export default function App() {
 
@@ -46,7 +19,7 @@ export default function App() {
 
     useEffect(() => {
         // Load language
-        const savedLang = window.ipcRenderer?.invoke('get-language');
+        const savedLang = ipc?.invoke('get-language');
         savedLang.then((lang: string) => {
             if (lang && lang !== i18n.language) {
                 i18n.changeLanguage(lang);
@@ -54,7 +27,7 @@ export default function App() {
         });
 
         // Load and apply theme
-        const savedTheme = window.ipcRenderer?.invoke('get-theme');
+        const savedTheme = ipc?.invoke('get-theme');
         savedTheme.then((theme: 'light' | 'dark') => {
             const currentTheme = theme || 'dark';
             document.documentElement.classList.remove('light', 'dark');
@@ -90,7 +63,7 @@ export default function App() {
 
     const handleBackToHome = () => {
         // @ts-ignore
-        window.ipcRenderer.invoke('set-session-folder', null);
+        ipc.invoke('set-session-folder', null);
         setCurrentProject(null);
     };
 

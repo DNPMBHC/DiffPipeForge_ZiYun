@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from "react";
 import { GlassButton } from "./ui/GlassButton";
 import { Save, RotateCcw } from "lucide-react";
@@ -306,7 +307,7 @@ export function ModelTrainingPage({
         }
 
         // 3. Fallback: Generate a new timestamped folder
-        const { projectRoot } = await window.ipcRenderer.invoke('get-paths');
+        const { projectRoot } = await ipc.invoke('get-paths');
         const now = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
         const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getSeconds())}`;
@@ -761,7 +762,7 @@ export function ModelTrainingPage({
 
             const tomlString = lines.join('\n');
 
-            const result = await window.ipcRenderer.invoke('save-to-date-folder', {
+            const result = await ipc.invoke('save-to-date-folder', {
                 filename: 'trainconfig.toml',
                 content: tomlString
             });

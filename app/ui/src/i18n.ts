@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
@@ -5,8 +6,8 @@ import en from './locales/en.json';
 import zh from './locales/zh.json';
 
 const saveLanguageToSettings = (lang: string) => {
-  if (window.ipcRenderer) {
-    window.ipcRenderer.invoke('set-language', lang);
+  if (ipc) {
+    ipc.invoke('set-language', lang);
   }
 };
 

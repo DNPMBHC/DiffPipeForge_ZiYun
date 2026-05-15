@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { GlassCard } from './ui/GlassCard';
 import { GlassButton } from './ui/GlassButton';
 import { useTranslation } from 'react-i18next';
@@ -139,7 +140,7 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
                             variant="ghost"
                             size="sm"
                             className="text-xs text-muted-foreground hover:text-white"
-                            onClick={() => window.ipcRenderer.invoke('open-external', 'https://github.com/TianDongL/DiffPipeForge')}
+                            onClick={() => ipc.invoke('open-external', 'https://github.com/TianDongL/DiffPipeForge')}
                         >
                             <Github className="w-4 h-4 mr-2" />
                             Official Website

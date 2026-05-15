@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { Terminal, XCircle, ScrollText, Download, Square } from 'lucide-react';
@@ -40,7 +41,7 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
         if (!projectPath) return;
         const configPath = `${projectPath}/trainconfig.toml`;
         try {
-            const res = await window.ipcRenderer.invoke('get-training-sessions', configPath);
+            const res = await ipc.invoke('get-training-sessions', configPath);
             setSessions(res);
         } catch (e) {
             console.error("Failed to fetch sessions:", e);
@@ -63,10 +64,10 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
 
     const loadSessionLogs = async (sessionId: string | null) => {
         if (!sessionId || sessionId === 'current') {
-            const status = await window.ipcRenderer.invoke('get-training-status');
+            const status = await ipc.invoke('get-training-status');
             setIsTraining(status.running);
             if (status.currentLogFilePath) {
-                const res = await window.ipcRenderer.invoke('get-training-logs', status.currentLogFilePath);
+                const res = await ipc.invoke('get-training-logs', status.currentLogFilePath);
                 setLogs(res || []);
                 setSpeed(parseSpeedFromLogs(res || []));
             } else if (status.logs) {
@@ -79,7 +80,7 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
         } else {
             const session = sessions.find(s => s.id === sessionId);
             if (session) {
-                const res = await window.ipcRenderer.invoke('get-training-logs', session.path);
+                const res = await ipc.invoke('get-training-logs', session.path);
                 setLogs(res || []);
                 setSpeed(parseSpeedFromLogs(res || []));
             }
@@ -135,9 +136,9 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
             }
         };
 
-        const removeLogs = (window.ipcRenderer as any).on('training-output', handleLogs);
-        const removeStatus = (window.ipcRenderer as any).on('training-status', handleStatus);
-        const removeSpeed = (window.ipcRenderer as any).on('training-speed', handleSpeed);
+        const removeLogs = (ipc as any).on('training-output', handleLogs);
+        const removeStatus = (ipc as any).on('training-status', handleStatus);
+        const removeSpeed = (ipc as any).on('training-speed', handleSpeed);
 
         return () => {
             removeLogs();
@@ -148,7 +149,7 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
 
     const handleStopTraining = async () => {
         try {
-            const res = await window.ipcRenderer.invoke('stop-training');
+            const res = await ipc.invoke('stop-training');
             if (res.success) {
                 setIsTraining(false);
                 setSpeed(null);

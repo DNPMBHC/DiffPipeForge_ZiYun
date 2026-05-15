@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { GlassButton } from '../ui/GlassButton';
@@ -23,22 +24,22 @@ export function ImageConverter() {
     // Sync status and logs on mount
     useEffect(() => {
         const sync = async () => {
-            const commonSettings = await window.ipcRenderer.invoke('get-tool-settings', 'common_toolbox_settings');
+            const commonSettings = await ipc.invoke('get-tool-settings', 'common_toolbox_settings');
             if (commonSettings.imageDir) setImageDir(commonSettings.imageDir);
 
-            const toolSettings = await window.ipcRenderer.invoke('get-tool-settings', 'image_converter');
+            const toolSettings = await ipc.invoke('get-tool-settings', 'image_converter');
             if (toolSettings) {
                 if (toolSettings.threads) setThreads(toolSettings.threads);
                 if (toolSettings.deleteSource !== undefined) setDeleteSource(toolSettings.deleteSource);
                 if (toolSettings.targetFormat) setTargetFormat(toolSettings.targetFormat);
             }
 
-            const status = await window.ipcRenderer.invoke('get-tool-status');
+            const status = await ipc.invoke('get-tool-status');
             if (status.scriptName === 'any_to_png_muilt.py') {
                 setIsRunning(status.isRunning);
             }
 
-            const savedLogs = await window.ipcRenderer.invoke('get-tool-logs');
+            const savedLogs = await ipc.invoke('get-tool-logs');
             if (savedLogs && savedLogs.length > 0) {
                 setLogs(savedLogs);
             }
@@ -48,13 +49,13 @@ export function ImageConverter() {
 
     const saveSettings = async () => {
         // Save shared settings
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'common_toolbox_settings',
             settings: { imageDir }
         });
 
         // Save tool-specific settings
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'image_converter',
             settings: { threads, deleteSource, targetFormat }
         });
@@ -69,7 +70,7 @@ export function ImageConverter() {
     }, [imageDir, threads, deleteSource, targetFormat]);
 
     const handleSelectDir = async () => {
-        const result = await window.ipcRenderer.invoke('dialog:openFile', {
+        const result = await ipc.invoke('dialog:openFile', {
             properties: ['openDirectory']
         });
         if (!result.canceled && result.filePaths.length > 0) {
@@ -97,7 +98,7 @@ export function ImageConverter() {
             args.push('--delete');
         }
 
-        const result = await window.ipcRenderer.invoke('run-tool', {
+        const result = await ipc.invoke('run-tool', {
             scriptName: 'any_to_png_muilt.py',
             args
         });
@@ -109,7 +110,7 @@ export function ImageConverter() {
     };
 
     const stopTool = async () => {
-        await window.ipcRenderer.invoke('stop-tool');
+        await ipc.invoke('stop-tool');
         setIsRunning(false);
     };
 
@@ -118,7 +119,7 @@ export function ImageConverter() {
             showToast(t('toolbox.errors.no_dir'), 'error');
             return;
         }
-        const result = await window.ipcRenderer.invoke('open-path', imageDir);
+        const result = await ipc.invoke('open-path', imageDir);
         if (!result.success) {
             showToast(result.error, 'error');
         }
@@ -141,8 +142,8 @@ export function ImageConverter() {
             }
         };
 
-        const removeOutput = (window.ipcRenderer as any).on('tool-output', handleOutput);
-        const removeStatus = (window.ipcRenderer as any).on('tool-status', handleStatus);
+        const removeOutput = (ipc as any).on('tool-output', handleOutput);
+        const removeStatus = (ipc as any).on('tool-status', handleStatus);
 
         return () => {
             removeOutput();

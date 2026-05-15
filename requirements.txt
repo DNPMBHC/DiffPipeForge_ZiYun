@@ -32,6 +32,8 @@ mpi4py
 wheel
 ninja
 pynvml
+fastapi
+uvicorn[standard]
 sentry_sdk
 # Tools Dependencies
 opencv-python

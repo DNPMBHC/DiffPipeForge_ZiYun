@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -35,7 +36,7 @@ export function ToolboxPage() {
 
     useEffect(() => {
         // Load initial state
-        window.ipcRenderer.invoke('get-tool-settings', 'toolbox_state').then(settings => {
+        ipc.invoke('get-tool-settings', 'toolbox_state').then(settings => {
             if (settings && settings.activeCategory) {
                 // Determine if the saved category matches one of our known categories
                 // We have to cast to string for comparison or be careful with types
@@ -50,7 +51,7 @@ export function ToolboxPage() {
 
     useEffect(() => {
         if (isLoaded) {
-            window.ipcRenderer.invoke('save-tool-settings', {
+            ipc.invoke('save-tool-settings', {
                 toolId: 'toolbox_state',
                 settings: { activeCategory }
             });

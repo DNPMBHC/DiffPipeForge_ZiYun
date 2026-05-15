@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { useTranslation } from 'react-i18next';
@@ -40,14 +41,14 @@ export function TaggingPreviewGrid({ directory, className, limit = 20 }: Tagging
         setLoading(true);
         setError(null);
         try {
-            const res = await window.ipcRenderer.invoke('list-images', { dirPath: directory, limit: currentLimit });
+            const res = await ipc.invoke('list-images', { dirPath: directory, limit: currentLimit });
             if (res.success) {
                 setTotal(res.total || 0);
 
                 const items = await Promise.all(res.images.map(async (path: string) => {
                     const [thumbnail, captionRes] = await Promise.all([
-                        window.ipcRenderer.invoke('get-thumbnail', path),
-                        window.ipcRenderer.invoke('read-caption', path)
+                        ipc.invoke('get-thumbnail', path),
+                        ipc.invoke('read-caption', path)
                     ]);
                     return {
                         path,
@@ -74,7 +75,7 @@ export function TaggingPreviewGrid({ directory, className, limit = 20 }: Tagging
 
     const handleSaveEdit = async (idx: number) => {
         const item = images[idx];
-        const res = await window.ipcRenderer.invoke('write-caption', { imagePath: item.path, content: editValue });
+        const res = await ipc.invoke('write-caption', { imagePath: item.path, content: editValue });
         if (res.success) {
             // Update local state instead of refetching everything for smoothness
             const newImages = [...images];
@@ -126,7 +127,7 @@ export function TaggingPreviewGrid({ directory, className, limit = 20 }: Tagging
                         {/* Image Side (1/3 width) */}
                         <div
                             className="w-[180px] min-w-[180px] relative cursor-pointer overflow-hidden border-r border-white/5"
-                            onClick={() => window.ipcRenderer.invoke('open-external', item.path)}
+                            onClick={() => ipc.invoke('open-external', item.path)}
                         >
                             <img
                                 src={item.thumbnail}
@@ -151,7 +152,7 @@ export function TaggingPreviewGrid({ directory, className, limit = 20 }: Tagging
                                 <span className="text-xs font-mono truncate max-w-[150px] font-medium" title={item.path}>
                                     {item.path.split(/[\\\/]/).pop()}
                                 </span>
-                                <ExternalLink className="w-3.5 h-3.5 hover:text-primary cursor-pointer transition-colors" onClick={() => window.ipcRenderer.invoke('open-external', item.path)} />
+                                <ExternalLink className="w-3.5 h-3.5 hover:text-primary cursor-pointer transition-colors" onClick={() => ipc.invoke('open-external', item.path)} />
                             </div>
                             <div className="flex-1 flex flex-col justify-center">
                                 {editingIdx === idx ? (
