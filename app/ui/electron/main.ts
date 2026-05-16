@@ -829,6 +829,36 @@ app.whenReady().then(() => {
     }
   })
 
+  // IPC Handler to list trainable media in a directory (images + videos)
+  ipcMain.handle('list-media', async (_event, { dirPath, limit = 20 }) => {
+    try {
+      if (!dirPath) return { success: false, error: "No directory path provided", files: [], total: 0, imageTotal: 0, videoTotal: 0 };
+      if (!fs.existsSync(dirPath)) return { success: true, files: [], total: 0, imageTotal: 0, videoTotal: 0 };
+
+      const files = await fs.promises.readdir(dirPath);
+      const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff']);
+      const videoExtensions = new Set(['.mp4', '.mov', '.mkv', '.webm', '.avi', '.m4v', '.wmv']);
+
+      const allFiles = files
+        .filter(file => imageExtensions.has(path.extname(file).toLowerCase()) || videoExtensions.has(path.extname(file).toLowerCase()))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+      const imageTotal = allFiles.filter(file => imageExtensions.has(path.extname(file).toLowerCase())).length;
+      const videoTotal = allFiles.filter(file => videoExtensions.has(path.extname(file).toLowerCase())).length;
+
+      return {
+        success: true,
+        files: allFiles.slice(0, limit).map(file => path.join(dirPath, file)),
+        total: allFiles.length,
+        imageTotal,
+        videoTotal
+      };
+    } catch (e: any) {
+      console.error("Failed to list media:", e);
+      return { success: false, error: e.message, files: [], total: 0, imageTotal: 0, videoTotal: 0 };
+    }
+  })
+
   // IPC Handler to get image thumbnail (compressed preview)
   ipcMain.handle('get-thumbnail', async (_event, filePath: string) => {
     try {

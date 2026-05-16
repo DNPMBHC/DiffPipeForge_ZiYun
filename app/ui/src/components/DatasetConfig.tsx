@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { GlassInput } from './ui/GlassInput';
@@ -193,7 +194,7 @@ export function DatasetConfig({ mode = 'training', importedConfig, modelType, mo
 
         try {
             // @ts-ignore
-            await window.ipcRenderer.invoke('delete-from-date-folder', {
+            await ipc.invoke('delete-from-date-folder', {
                 filename: filename
             });
         } catch (e) {
@@ -254,7 +255,7 @@ export function DatasetConfig({ mode = 'training', importedConfig, modelType, mo
     const handlePickDir = async (callback: (path: string) => void) => {
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('dialog:openFile', {
+            const result = await ipc.invoke('dialog:openFile', {
                 properties: ['openDirectory', 'createDirectory']
             });
             if (!result.canceled && result.filePaths.length > 0) {
@@ -415,7 +416,7 @@ export function DatasetConfig({ mode = 'training', importedConfig, modelType, mo
                 }
 
                 const tomlString = trainLines.join('\n');
-                await window.ipcRenderer.invoke('save-to-date-folder', {
+                await ipc.invoke('save-to-date-folder', {
                     filename: 'dataset.toml',
                     content: tomlString
                 });
@@ -440,7 +441,7 @@ export function DatasetConfig({ mode = 'training', importedConfig, modelType, mo
 
                     const filename = i === 0 ? 'evaldataset.toml' : `evaldataset_${i}.toml`;
                     const tomlString = evalLines.join('\n');
-                    await window.ipcRenderer.invoke('save-to-date-folder', {
+                    await ipc.invoke('save-to-date-folder', {
                         filename,
                         content: tomlString
                     });
@@ -543,7 +544,7 @@ export function DatasetConfig({ mode = 'training', importedConfig, modelType, mo
                                                     const filename = i === 0 ? 'evaldataset.toml' : `evaldataset_${i}.toml`;
                                                     try {
                                                         // @ts-ignore
-                                                        await window.ipcRenderer.invoke('delete-from-date-folder', { filename });
+                                                        await ipc.invoke('delete-from-date-folder', { filename });
                                                     } catch (e) {
                                                         console.error(`Failed to delete ${filename}:`, e);
                                                     }

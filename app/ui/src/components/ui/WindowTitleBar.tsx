@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { Minus, Square, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -6,17 +7,17 @@ export function WindowTitleBar() {
 
     const handleMinimize = () => {
         // @ts-ignore
-        window.ipcRenderer.send('window-minimize');
+        ipc.send('window-minimize');
     };
 
     const handleMaximize = () => {
         // @ts-ignore
-        window.ipcRenderer.send('window-toggle-maximize');
+        ipc.send('window-toggle-maximize');
     };
 
     const handleClose = () => {
         // @ts-ignore
-        window.ipcRenderer.send('window-close');
+        ipc.send('window-close');
     };
 
     return (
@@ -30,7 +31,7 @@ export function WindowTitleBar() {
                 </span>
             </div>
 
-            {window.ipcRenderer && (
+            {ipc && (
                 <div className="flex items-center h-full" style={{ WebkitAppRegion: 'no-drag' } as any}>
                     <button
                         onClick={handleMinimize}

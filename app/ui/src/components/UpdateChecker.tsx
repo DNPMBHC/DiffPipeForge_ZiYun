@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useEffect, useState } from 'react';
 import { RefreshCw, Download, RotateCcw } from 'lucide-react';
 import { GlassButton } from './ui/GlassButton';
@@ -16,7 +17,7 @@ export function UpdateChecker() {
 
     useEffect(() => {
         // @ts-ignore
-        const removeListener = window.ipcRenderer.on('update-status', (event: any, data: any) => {
+        const removeListener = ipc.on('update-status', (event: any, data: any) => {
             console.log('[UpdateChecker] Status update:', data);
 
             if (data.status === 'checking') {
@@ -50,7 +51,7 @@ export function UpdateChecker() {
         setStatus('checking');
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('check-for-updates');
+            const result = await ipc.invoke('check-for-updates');
             if (result && result.status === 'dev') {
                 setStatus('idle');
                 showToast("Development mode: Cannot check for updates", 'warning');
@@ -64,7 +65,7 @@ export function UpdateChecker() {
     const handleConfirmUpdate = async () => {
         try {
             // @ts-ignore
-            await window.ipcRenderer.invoke('download-update');
+            await ipc.invoke('download-update');
             setStatus('downloading');
         } catch (e) {
             console.error(e);
@@ -75,7 +76,7 @@ export function UpdateChecker() {
 
     const quitAndInstall = async () => {
         // @ts-ignore
-        await window.ipcRenderer.invoke('quit-and-install');
+        await ipc.invoke('quit-and-install');
     };
 
     if (status === 'downloading') {

@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from 'react';
 import { Play, Square, Settings, FolderOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +9,7 @@ import { StartParamsConfig } from './StartParamsConfig';
 import { cn } from '@/lib/utils';
 import { parse } from 'smol-toml';
 import { TrainingLogViewer } from './TrainingLogViewer';
+import { estimateTrainingProgress, TrainingProgressEstimate } from '@/lib/trainingProgress';
 
 interface TrainingLauncherPageProps {
     projectPath?: string | null;
@@ -33,12 +35,14 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
         model_type: string;
         epochs: number;
         output_dir: string;
+        max_steps?: number;
     } | null>(null);
+    const [progressEstimate, setProgressEstimate] = useState<TrainingProgressEstimate | null>(null);
 
     // Initial check for training status and status updates
     useEffect(() => {
         const checkStatus = async () => {
-            const status = await window.ipcRenderer.invoke('get-training-status');
+            const status = await ipc.invoke('get-training-status');
             setIsTraining(status.running);
         };
         checkStatus();
@@ -48,7 +52,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
             if (status.type === 'finished' || status.type === 'error') setIsTraining(false);
         };
 
-        const removeStatus = (window.ipcRenderer as any).on('training-status', handleStatus);
+        const removeStatus = (ipc as any).on('training-status', handleStatus);
         return () => {
             removeStatus();
         };
@@ -62,7 +66,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
                 return;
             }
             try {
-                const savedParams = await window.ipcRenderer.invoke('get-project-launch-params', projectPath);
+                const savedParams = await ipc.invoke('get-project-launch-params', projectPath);
                 if (savedParams && Object.keys(savedParams).length > 0) {
                     setStartParams(prev => ({
                         ...prev,
@@ -96,7 +100,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
         if (!isLoaded || !projectPath) return;
 
         const timer = setTimeout(() => {
-            window.ipcRenderer.invoke('save-project-launch-params', {
+            ipc.invoke('save-project-launch-params', {
                 projectPath,
                 params: startParams
             });
@@ -111,7 +115,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
             if (!projectPath) return;
             const configPath = `${projectPath}/trainconfig.toml`;
             try {
-                const content = await window.ipcRenderer.invoke('read-file', configPath);
+                const content = await ipc.invoke('read-file', configPath);
                 if (content) {
                     const parsed = parse(content) as any;
                     let outputDir = parsed.output_dir || '';
@@ -123,15 +127,20 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
                     setConfigSummary({
                         model_type: parsed.model_type || parsed.model?.type || 'unknown',
                         epochs: parsed.epochs || 0,
-                        output_dir: outputDir
+                        output_dir: outputDir,
+                        max_steps: Number(parsed.max_steps) > 0 ? Number(parsed.max_steps) : undefined
                     });
+
+                    const estimate = await estimateTrainingProgress(projectPath, parsed, startParams.num_gpus);
+                    setProgressEstimate(estimate);
                 }
             } catch (e) {
                 console.error("Failed to load config summary:", e);
+                setProgressEstimate(null);
             }
         };
         loadConfig();
-    }, [projectPath]);
+    }, [projectPath, startParams.num_gpus]);
 
     const handleStartTraining = async () => {
         if (!projectPath) {
@@ -141,7 +150,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
 
         try {
             if (isTraining) {
-                const stop = await window.ipcRenderer.invoke('stop-training');
+                const stop = await ipc.invoke('stop-training');
                 if (stop.success) {
                     setIsTraining(false);
                     showToast(t('training.training_stopped'), 'success');
@@ -155,7 +164,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
 
             setIsTraining(true);
 
-            const results = await window.ipcRenderer.invoke('start-training', {
+            const results = await ipc.invoke('start-training', {
                 configPath: configPath,
                 ...startParams
             });
@@ -217,11 +226,33 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
                                 <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">{t('training.epochs')}</p>
                                 <p className="text-lg font-bold">{configSummary.epochs}</p>
                             </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">总步数</p>
+                                    <p className="text-lg font-bold">
+                                        {progressEstimate?.totalSteps ? progressEstimate.totalSteps.toLocaleString() : '--'}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        {progressEstimate?.source === 'max_steps' ? '来自 max_steps' : progressEstimate?.source === 'dataset_estimate' ? '估算' : '等待配置'}
+                                    </p>
+                                </div>
+                                <div className="bg-white/5 p-3 rounded-xl border border-white/10">
+                                    <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold mb-1">样本数</p>
+                                    <p className="text-lg font-bold">
+                                        {progressEstimate?.sampleCount !== null && progressEstimate?.sampleCount !== undefined ? progressEstimate.sampleCount.toLocaleString() : '--'}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1">
+                                        {progressEstimate?.sampleCount !== null && progressEstimate?.sampleCount !== undefined
+                                            ? `图片 ${progressEstimate.imageCount ?? 0} / 视频 ${progressEstimate.videoCount ?? 0}`
+                                            : progressEstimate?.reason || 'max_steps 模式'}
+                                    </p>
+                                </div>
+                            </div>
                             <button
                                 onClick={async () => {
                                     if (!configSummary?.output_dir) return;
                                     console.log("[Launcher] Requesting to open folder:", configSummary.output_dir);
-                                    const success = await window.ipcRenderer.invoke('open-folder', configSummary.output_dir);
+                                    const success = await ipc.invoke('open-folder', configSummary.output_dir);
                                     console.log("[Launcher] Open folder result:", success);
                                     if (!success) {
                                         showToast(`Failed to open: ${configSummary.output_dir}`, 'error');
@@ -254,7 +285,7 @@ export function TrainingLauncherPage({ projectPath }: TrainingLauncherPageProps)
             </div>
 
             {/* Integrated Training Logs */}
-            <TrainingLogViewer projectPath={projectPath} showTitle={true} integrated={true} />
+            <TrainingLogViewer projectPath={projectPath} showTitle={true} integrated={true} expectedTotalSteps={progressEstimate?.totalSteps ?? null} />
         </div>
     );
 }

@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Shield, CheckCircle2, XCircle, Loader2, FolderOpen, FileText, HardDrive, RefreshCw, ChevronDown, ChevronRight, Copy, Check, X } from 'lucide-react';
@@ -39,9 +40,9 @@ export function SystemDiagnosticsPage() {
             try {
                 // @ts-ignore
                 const [cached, officialResult, pythonInfo] = await Promise.all([
-                    window.ipcRenderer.invoke('get-fingerprint-cache'),
-                    window.ipcRenderer.invoke('get-official-fingerprint'),
-                    window.ipcRenderer.invoke('get-python-status')
+                    ipc.invoke('get-fingerprint-cache'),
+                    ipc.invoke('get-official-fingerprint'),
+                    ipc.invoke('get-python-status')
                 ]);
 
                 if (cached) {
@@ -70,9 +71,9 @@ export function SystemDiagnosticsPage() {
             // But we should allow user to re-calculate
         };
 
-        window.ipcRenderer.on('python-status-changed', handleStatusChange);
+        ipc.on('python-status-changed', handleStatusChange);
         return () => {
-            window.ipcRenderer.removeListener('python-status-changed', handleStatusChange);
+            ipc.removeListener('python-status-changed', handleStatusChange);
         };
     }, []);
 
@@ -84,9 +85,9 @@ export function SystemDiagnosticsPage() {
         try {
             // @ts-ignore
             const [fpResult, officialResult, pythonInfo] = await Promise.all([
-                window.ipcRenderer.invoke('calculate-python-fingerprint'),
-                window.ipcRenderer.invoke('get-official-fingerprint'),
-                window.ipcRenderer.invoke('get-python-status')
+                ipc.invoke('calculate-python-fingerprint'),
+                ipc.invoke('get-official-fingerprint'),
+                ipc.invoke('get-python-status')
             ]);
 
             if (fpResult.error) {
@@ -97,7 +98,7 @@ export function SystemDiagnosticsPage() {
 
                 // Save to cache
                 // @ts-ignore
-                await window.ipcRenderer.invoke('save-fingerprint-cache', {
+                await ipc.invoke('save-fingerprint-cache', {
                     sha256: fpResult.sha256,
                     totalFiles: fpResult.totalFiles,
                     totalSize: fpResult.totalSize,

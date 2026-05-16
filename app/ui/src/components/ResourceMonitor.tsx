@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useEffect, useState } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { Cpu, Database, Zap, HardDrive } from 'lucide-react';
@@ -44,11 +45,11 @@ export function ResourceMonitor() {
     useEffect(() => {
         // Start monitor (no-op if already running in backend)
         // @ts-ignore
-        window.ipcRenderer.invoke('start-resource-monitor');
+        ipc.invoke('start-resource-monitor');
 
         // Initial sync of stats if monitor was already running
         // @ts-ignore
-        window.ipcRenderer.invoke('get-resource-monitor-stats').then(initialStats => {
+        ipc.invoke('get-resource-monitor-stats').then(initialStats => {
             if (initialStats) {
                 setStats(initialStats);
                 if (initialStats.cpu_model) setCpuModel(initialStats.cpu_model);
@@ -72,7 +73,7 @@ export function ResourceMonitor() {
             });
         };
 
-        const removeStats = (window.ipcRenderer as any).on('resource-stats', handleStats);
+        const removeStats = (ipc as any).on('resource-stats', handleStats);
 
         return () => {
             // DON'T stop monitor on unmount to keep it running in background

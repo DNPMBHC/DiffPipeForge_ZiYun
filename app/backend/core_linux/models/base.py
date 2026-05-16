@@ -23,6 +23,8 @@ import comfy.sd
 import comfy.sd1_clip
 from comfy.sd1_clip import SD1Tokenizer
 from comfy import model_management
+# Avoids using comfy_kitchen RoPE implementations that don't have backward defined
+model_management.in_training = True
 
 model_management.in_training = True
 
@@ -419,7 +421,6 @@ class ComfyPipeline:
             clip_type = getattr(comfy.sd.CLIPType, te_config['type'].upper(), comfy.sd.CLIPType.STABLE_DIFFUSION)
 
             def load_fn():
-                return comfy.sd.load_clip(ckpt_paths=paths, clip_type=clip_type)
                 return comfy.sd.load_clip(ckpt_paths=paths, clip_type=clip_type, disable_dynamic=True)
 
             self.text_encoders.append(ModelWrapper(load_fn))

@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -39,15 +40,15 @@ export function StyleFilter() {
     useEffect(() => {
         const sync = async () => {
             // Load settings
-            const commonSettings = await window.ipcRenderer.invoke('get-tool-settings', 'common_toolbox_settings');
+            const commonSettings = await ipc.invoke('get-tool-settings', 'common_toolbox_settings');
             if (commonSettings.imageDir) setImageDir(commonSettings.imageDir);
 
-            const toolSettings = await window.ipcRenderer.invoke('get-tool-settings', 'style_filter');
+            const toolSettings = await ipc.invoke('get-tool-settings', 'style_filter');
             if (toolSettings) {
                 setSettings(prev => ({ ...prev, ...toolSettings }));
             }
 
-            const status = await window.ipcRenderer.invoke('get-tool-status');
+            const status = await ipc.invoke('get-tool-status');
             if (status.isRunning) {
                 if (status.scriptName === 'filter_style.py') {
                     setActiveTask('filtering');
@@ -56,7 +57,7 @@ export function StyleFilter() {
                 }
             }
 
-            const savedLogs = await window.ipcRenderer.invoke('get-tool-logs');
+            const savedLogs = await ipc.invoke('get-tool-logs');
             if (savedLogs && savedLogs.length > 0) {
                 setLogs(savedLogs);
             }
@@ -66,13 +67,13 @@ export function StyleFilter() {
 
     const saveSettings = async () => {
         // Save shared settings
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'common_toolbox_settings',
             settings: { imageDir }
         });
 
         // Save tool-specific settings
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'style_filter',
             settings: settings
         });
@@ -94,7 +95,7 @@ export function StyleFilter() {
     }, [logs]);
 
     const handleSelectDir = async () => {
-        const result = await window.ipcRenderer.invoke('dialog:openFile', {
+        const result = await ipc.invoke('dialog:openFile', {
             properties: ['openDirectory']
         });
         if (!result.canceled && result.filePaths.length > 0) {
@@ -109,7 +110,7 @@ export function StyleFilter() {
         }
 
         // Check if model exists
-        const modelExists = await window.ipcRenderer.invoke('check-style-model');
+        const modelExists = await ipc.invoke('check-style-model');
         if (!modelExists) {
             showToast(t('toolbox.style_filter.no_model'), 'error');
             return;
@@ -121,8 +122,8 @@ export function StyleFilter() {
         };
 
         try {
-            window.ipcRenderer.on('tool-output', listener);
-            const result = await window.ipcRenderer.invoke('run-tool', {
+            ipc.on('tool-output', listener);
+            const result = await ipc.invoke('run-tool', {
                 scriptName: 'filter_style/filter_style.py',
                 args: [
                     '--dir', imageDir,
@@ -133,7 +134,7 @@ export function StyleFilter() {
                     '--threads', settings.threads
                 ]
             });
-            window.ipcRenderer.removeListener('tool-output', listener);
+            ipc.removeListener('tool-output', listener);
 
             if (result.success) {
                 showToast(t('toolbox.style_filter.finished'), 'success');
@@ -148,7 +149,7 @@ export function StyleFilter() {
     };
 
     const handleStop = async () => {
-        await window.ipcRenderer.invoke('stop-tool');
+        await ipc.invoke('stop-tool');
         setActiveTask('idle');
     };
 
@@ -157,7 +158,7 @@ export function StyleFilter() {
             showToast(t('toolbox.errors.no_dir'), 'error');
             return;
         }
-        await window.ipcRenderer.invoke('open-path', imageDir);
+        await ipc.invoke('open-path', imageDir);
     };
 
     useEffect(() => {
@@ -183,8 +184,8 @@ export function StyleFilter() {
             }
         };
 
-        const removeOutput = (window.ipcRenderer as any).on('tool-output', handleOutput);
-        const removeStatus = (window.ipcRenderer as any).on('tool-status', handleStatus);
+        const removeOutput = (ipc as any).on('tool-output', handleOutput);
+        const removeStatus = (ipc as any).on('tool-status', handleStatus);
 
         return () => {
             removeOutput();
@@ -402,13 +403,13 @@ export function StyleFilter() {
                         const listener = (_event: any, data: string) => {
                             setLogs(prev => [...prev, data]);
                         };
-                        window.ipcRenderer.on('tool-output', listener);
-                        const result = await window.ipcRenderer.invoke('run-tool', {
+                        ipc.on('tool-output', listener);
+                        const result = await ipc.invoke('run-tool', {
                             scriptName: 'download_clip.py',
                             args: ['--source', source, '--model', modelId, '--output-dir', 'filter_style'],
                             online: true
                         });
-                        window.ipcRenderer.removeListener('tool-output', listener);
+                        ipc.removeListener('tool-output', listener);
 
                         if (!result.success) {
                             // Only show toast if it failed to START (status listener handles finish/stop)

@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./Sidebar";
 import { DatasetConfig } from './DatasetConfig';
@@ -73,13 +74,13 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
         document.documentElement.classList.remove('light', 'dark');
         document.documentElement.classList.add(newTheme);
         // @ts-ignore
-        window.ipcRenderer.invoke('set-theme', newTheme);
+        ipc.invoke('set-theme', newTheme);
     };
 
     // Initialize theme from settings
     useEffect(() => {
         // @ts-ignore
-        window.ipcRenderer.invoke('get-theme').then((savedTheme: 'light' | 'dark') => {
+        ipc.invoke('get-theme').then((savedTheme: 'light' | 'dark') => {
             if (savedTheme) {
                 setTheme(savedTheme);
                 document.documentElement.classList.remove('light', 'dark');
@@ -92,7 +93,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
     const loadProjectFromPath = async (folderPath: string) => {
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('read-project-folder', folderPath);
+            const result = await ipc.invoke('read-project-folder', folderPath);
 
             if (result.error) {
                 showToast(result.error, 'error');
@@ -143,7 +144,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
     const checkPythonStatus = async () => {
         try {
             // @ts-ignore
-            const info = await window.ipcRenderer.invoke('get-python-status');
+            const info = await ipc.invoke('get-python-status');
             setPythonInfo(info);
         } catch (e) {
             console.error("Failed to check python status:", e);
@@ -156,7 +157,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
             lastLoadedPathRef.current = projectPath;
             // First, lock the session to this directory
             // @ts-ignore
-            window.ipcRenderer.invoke('set-session-folder', projectPath);
+            ipc.invoke('set-session-folder', projectPath);
             // Then load configurations
             loadProjectFromPath(projectPath);
             checkPythonStatus();
@@ -168,7 +169,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
     const handleSwitchPython = async (path: string) => {
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('set-python-env', path);
+            const result = await ipc.invoke('set-python-env', path);
             if (result.success) {
                 setPythonInfo(result);
                 showToast(t('common.python_switched') || 'Python environment switched', 'success');
@@ -183,7 +184,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
     const handlePickCustomPython = async () => {
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('pick-python-exe');
+            const result = await ipc.invoke('pick-python-exe');
             if (result.success) {
                 setPythonInfo({ ...result, availableEnvs: pythonInfo.availableEnvs }); // Maintain list
                 showToast(t('common.python_switched') || 'Python environment switched', 'success');
@@ -230,7 +231,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
     const confirmRename = async () => {
         if (!projectPath) return;
         try {
-            const result = await window.ipcRenderer.invoke('rename-project-folder', {
+            const result = await ipc.invoke('rename-project-folder', {
                 oldPath: projectPath,
                 newName: newName.trim()
             });
@@ -292,7 +293,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
             if (isTomlFile) {
                 try {
                     // 1. Read content to determine type
-                    let content = await window.ipcRenderer.invoke('read-file', filePath);
+                    let content = await ipc.invoke('read-file', filePath);
                     let targetName = fileName; // Default to original name
                     let detectedType: 'train' | 'dataset' | 'evalDataset' | null = null;
                     let parsed: any = null;
@@ -343,7 +344,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
                     }
 
                     // 2. Copy to date folder (renaming if detected)
-                    const copyResult = await window.ipcRenderer.invoke('copy-to-date-folder', {
+                    const copyResult = await ipc.invoke('copy-to-date-folder', {
                         sourcePath: filePath,
                         filename: targetName
                     });
@@ -384,7 +385,7 @@ export default function AppLayout({ onBackToHome, projectPath, onProjectRenamed 
                     showToast('文件处理错误', 'error');
                 }
             } else {
-                const copyResult = await window.ipcRenderer.invoke('copy-folder-configs-to-date', {
+                const copyResult = await ipc.invoke('copy-folder-configs-to-date', {
                     sourceFolderPath: filePath
                 });
 

@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { Terminal, XCircle, ScrollText, Download, Square } from 'lucide-react';
@@ -6,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { GlassButton } from './ui/GlassButton';
 import { GlassSelect } from './ui/GlassSelect';
 import { useGlassToast } from './ui/GlassToast';
+import { buildProgressSnapshot, formatDuration } from '@/lib/trainingProgress';
 
 interface Session {
     id: string;
@@ -23,9 +25,10 @@ interface TrainingLogViewerProps {
     projectPath?: string | null;
     showTitle?: boolean;
     integrated?: boolean;
+    expectedTotalSteps?: number | null;
 }
 
-export function TrainingLogViewer({ projectPath, showTitle = true, integrated = false }: TrainingLogViewerProps) {
+export function TrainingLogViewer({ projectPath, showTitle = true, integrated = false, expectedTotalSteps = null }: TrainingLogViewerProps) {
     const { t } = useTranslation();
     const { showToast } = useGlassToast();
     const [logs, setLogs] = useState<string[]>([]);
@@ -40,7 +43,7 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
         if (!projectPath) return;
         const configPath = `${projectPath}/trainconfig.toml`;
         try {
-            const res = await window.ipcRenderer.invoke('get-training-sessions', configPath);
+            const res = await ipc.invoke('get-training-sessions', configPath);
             setSessions(res);
         } catch (e) {
             console.error("Failed to fetch sessions:", e);
@@ -63,10 +66,10 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
 
     const loadSessionLogs = async (sessionId: string | null) => {
         if (!sessionId || sessionId === 'current') {
-            const status = await window.ipcRenderer.invoke('get-training-status');
+            const status = await ipc.invoke('get-training-status');
             setIsTraining(status.running);
             if (status.currentLogFilePath) {
-                const res = await window.ipcRenderer.invoke('get-training-logs', status.currentLogFilePath);
+                const res = await ipc.invoke('get-training-logs', status.currentLogFilePath);
                 setLogs(res || []);
                 setSpeed(parseSpeedFromLogs(res || []));
             } else if (status.logs) {
@@ -79,7 +82,7 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
         } else {
             const session = sessions.find(s => s.id === sessionId);
             if (session) {
-                const res = await window.ipcRenderer.invoke('get-training-logs', session.path);
+                const res = await ipc.invoke('get-training-logs', session.path);
                 setLogs(res || []);
                 setSpeed(parseSpeedFromLogs(res || []));
             }
@@ -135,9 +138,9 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
             }
         };
 
-        const removeLogs = (window.ipcRenderer as any).on('training-output', handleLogs);
-        const removeStatus = (window.ipcRenderer as any).on('training-status', handleStatus);
-        const removeSpeed = (window.ipcRenderer as any).on('training-speed', handleSpeed);
+        const removeLogs = (ipc as any).on('training-output', handleLogs);
+        const removeStatus = (ipc as any).on('training-status', handleStatus);
+        const removeSpeed = (ipc as any).on('training-speed', handleSpeed);
 
         return () => {
             removeLogs();
@@ -148,7 +151,7 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
 
     const handleStopTraining = async () => {
         try {
-            const res = await window.ipcRenderer.invoke('stop-training');
+            const res = await ipc.invoke('stop-training');
             if (res.success) {
                 setIsTraining(false);
                 setSpeed(null);
@@ -188,6 +191,7 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
             value: s.id
         }))
     ];
+    const progress = buildProgressSnapshot(logs, selectedSessionId === 'current' || !selectedSessionId ? expectedTotalSteps : null, speed?.iterTime ?? null);
 
     return (
         <div className={cn("flex flex-col gap-4", integrated ? "mt-8" : "h-full max-h-[calc(100vh-120px)]")}>
@@ -220,6 +224,21 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
                             <div className="flex items-center gap-2">
                                 <span className="opacity-80">{t('training_log.iter_time')}:</span>
                                 <strong className="text-sm font-bold text-white tracking-tight">{speed.iterTime.toFixed(2)}s</strong>
+                            </div>
+                        </div>
+                    )}
+                    {(progress.currentStep !== null || progress.totalSteps !== null) && (
+                        <div className="px-4 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-50 border border-emerald-500/20 font-mono text-xs flex items-center gap-4 animate-in zoom-in duration-300 h-9 shadow-lg shadow-emerald-500/5">
+                            <div className="flex items-center gap-2">
+                                <span className="opacity-80">Step:</span>
+                                <strong className="text-sm font-bold text-white tracking-tight">
+                                    {progress.currentStep?.toLocaleString() ?? '--'} / {progress.totalSteps?.toLocaleString() ?? '--'}
+                                </strong>
+                            </div>
+                            <div className="w-[1px] h-4 bg-emerald-500/20" />
+                            <div className="flex items-center gap-2">
+                                <span className="opacity-80">ETA:</span>
+                                <strong className="text-sm font-bold text-white tracking-tight">{formatDuration(progress.etaSeconds)}</strong>
                             </div>
                         </div>
                     )}
@@ -259,6 +278,14 @@ export function TrainingLogViewer({ projectPath, showTitle = true, integrated = 
             </div>
 
             <GlassCard className={cn("flex-1 p-0 overflow-hidden flex flex-col border-primary/20 bg-black/40 backdrop-blur-xl min-h-[500px]", integrated && "max-h-[800px]")}>
+                {progress.percent !== null && (
+                    <div className="h-1 bg-white/10 overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-500"
+                            style={{ width: `${progress.percent}%` }}
+                        />
+                    </div>
+                )}
                 <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/10 text-[10px] font-mono opacity-70">
                     <div className="flex items-center gap-2">
                         <Terminal className="w-3 h-3" />

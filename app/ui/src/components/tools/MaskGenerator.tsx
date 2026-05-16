@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 
 import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from '../ui/GlassCard';
@@ -73,13 +74,13 @@ export function MaskGenerator() {
         // Disabled auto-check on mount to prevent issues in dev/linux
         // checkModelStatus(); 
         const sync = async () => {
-            const commonSettings = await window.ipcRenderer.invoke('get-tool-settings', 'common_toolbox_settings');
+            const commonSettings = await ipc.invoke('get-tool-settings', 'common_toolbox_settings');
             if (commonSettings.imageDir) {
                 setImageDir(commonSettings.imageDir);
             }
 
             // Load mask generator specific settings
-            const maskSettings = await window.ipcRenderer.invoke('get-tool-settings', 'mask_generator_state');
+            const maskSettings = await ipc.invoke('get-tool-settings', 'mask_generator_state');
             if (maskSettings) {
                 if (maskSettings.selectedLabels) setSelectedLabels(new Set(maskSettings.selectedLabels));
                 if (maskSettings.showAdvanced !== undefined) setShowAdvanced(maskSettings.showAdvanced);
@@ -96,11 +97,11 @@ export function MaskGenerator() {
             }
             setIsLoaded(true);
 
-            const status = await window.ipcRenderer.invoke('get-tool-status');
+            const status = await ipc.invoke('get-tool-status');
             if (status.scriptName === 'mask_generate.py') {
                 setIsRunning(status.isRunning);
                 if (status.isRunning) {
-                    const savedLogs = await window.ipcRenderer.invoke('get-tool-logs');
+                    const savedLogs = await ipc.invoke('get-tool-logs');
                     if (savedLogs && savedLogs.length > 0) {
                         setLogs(savedLogs);
                         const hasDownloadStart = savedLogs.some((l: string) => l.includes('Downloading'));
@@ -111,7 +112,7 @@ export function MaskGenerator() {
                     }
                 }
             } else {
-                const savedLogs = await window.ipcRenderer.invoke('get-tool-logs');
+                const savedLogs = await ipc.invoke('get-tool-logs');
                 if (savedLogs && savedLogs.length > 0) {
                     setLogs(savedLogs);
                     const hasSuccess = savedLogs.some((l: string) => l.includes('DOWNLOAD_SUCCESS'));
@@ -126,7 +127,7 @@ export function MaskGenerator() {
 
     const performModelCheck = async (): Promise<boolean> => {
         try {
-            const result = await window.ipcRenderer.invoke('run-python-script-capture', {
+            const result = await ipc.invoke('run-python-script-capture', {
                 scriptPath: 'tools/mask_generate.py',
                 args: ['--mode', 'check', '--model_path', MODEL_PATH]
             });
@@ -162,7 +163,7 @@ export function MaskGenerator() {
     // Persistence save hook
     useEffect(() => {
         if (isLoaded) {
-            window.ipcRenderer.invoke('save-tool-settings', {
+            ipc.invoke('save-tool-settings', {
                 toolId: 'mask_generator_state',
                 settings: {
                     selectedLabels: Array.from(selectedLabels),
@@ -189,9 +190,9 @@ export function MaskGenerator() {
                 setRefreshTrigger(prev => prev + 1);
             }
         };
-        window.ipcRenderer.on('tool-output', handleOutput);
+        ipc.on('tool-output', handleOutput);
         return () => {
-            window.ipcRenderer.removeListener('tool-output', handleOutput);
+            ipc.removeListener('tool-output', handleOutput);
         };
     }, []);
 
@@ -210,7 +211,7 @@ export function MaskGenerator() {
         setLogs(prev => [...prev, `[Download] Starting Segformer & VITMatte model download from ${sourceName}...`]);
 
         try {
-            await window.ipcRenderer.invoke('run-tool', {
+            await ipc.invoke('run-tool', {
                 scriptName: 'mask_generate.py',
                 args: ['--mode', 'download', '--model_path', MODEL_PATH, '--source', source, '--model_type', 'all'],
                 online: true
@@ -224,12 +225,12 @@ export function MaskGenerator() {
     };
 
     const handleSelectDir = async () => {
-        const result = await window.ipcRenderer.invoke('dialog:openFile', {
+        const result = await ipc.invoke('dialog:openFile', {
             properties: ['openDirectory']
         });
         if (!result.canceled && result.filePaths.length > 0) {
             setImageDir(result.filePaths[0]);
-            await window.ipcRenderer.invoke('save-tool-settings', {
+            await ipc.invoke('save-tool-settings', {
                 toolId: 'common_toolbox_settings',
                 settings: { imageDir: result.filePaths[0] }
             });
@@ -238,17 +239,17 @@ export function MaskGenerator() {
 
     const handleOpenDir = async () => {
         if (!imageDir) return;
-        await window.ipcRenderer.invoke('open-path', imageDir);
+        await ipc.invoke('open-path', imageDir);
     };
 
     const handleOpenMaskDir = async () => {
         const target = maskDir || (imageDir ? `${imageDir}_masks` : '');
         if (!target) return;
-        await window.ipcRenderer.invoke('open-path', target);
+        await ipc.invoke('open-path', target);
     };
 
     const handleSelectMaskDir = async () => {
-        const result = await window.ipcRenderer.invoke('dialog:openFile', {
+        const result = await ipc.invoke('dialog:openFile', {
             properties: ['openDirectory']
         });
         if (!result.canceled && result.filePaths.length > 0) {
@@ -327,7 +328,7 @@ export function MaskGenerator() {
             '--output_black_level', String(outputBlackLevel),
         ];
 
-        const result = await window.ipcRenderer.invoke('run-tool', {
+        const result = await ipc.invoke('run-tool', {
             scriptName: 'mask_generate.py',
             args: args,
         });
@@ -339,7 +340,7 @@ export function MaskGenerator() {
     };
 
     const stopTool = async () => {
-        await window.ipcRenderer.invoke('stop-tool');
+        await ipc.invoke('stop-tool');
         setIsRunning(false);
         setIsDownloading(false);
         showToast(t('toolbox.mask.stopped'), 'success');
@@ -382,8 +383,8 @@ export function MaskGenerator() {
             }
         };
 
-        const removeLogListener = (window.ipcRenderer as any).on('tool-output', handleLog);
-        const removeStatusListener = (window.ipcRenderer as any).on('tool-status', handleStatus);
+        const removeLogListener = (ipc as any).on('tool-output', handleLog);
+        const removeStatusListener = (ipc as any).on('tool-status', handleStatus);
 
         return () => {
             removeLogListener();

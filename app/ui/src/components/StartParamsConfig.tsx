@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import React from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { GlassInput } from './ui/GlassInput';
@@ -18,7 +19,7 @@ export function StartParamsConfig({ data, onChange }: StartParamsConfigProps) {
         const fetchPlatform = async () => {
             try {
                 // @ts-ignore
-                const p = await window.ipcRenderer.invoke('get-platform');
+                const p = await ipc.invoke('get-platform');
                 setPlatform(p);
             } catch (e) {
                 console.error("Failed to fetch platform:", e);
@@ -35,7 +36,7 @@ export function StartParamsConfig({ data, onChange }: StartParamsConfigProps) {
     const handlePickPath = async (name: string, isFolder: boolean = false) => {
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('dialog:openFile', {
+            const result = await ipc.invoke('dialog:openFile', {
                 properties: isFolder ? ['openDirectory'] : ['openFile'],
                 filters: isFolder ? [] : [{ name: 'Model Files', extensions: ['safetensors', 'pt', 'ckpt', 'bin'] }]
             });

@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { GlassButton } from '../ui/GlassButton';
@@ -28,8 +29,8 @@ export function GeminiTagger() {
     // Load saved settings and sync status
     useEffect(() => {
         const load = async () => {
-            const commonSettings = await window.ipcRenderer.invoke('get-tool-settings', 'common_toolbox_settings');
-            const settings = await window.ipcRenderer.invoke('get-tool-settings', 'gemini_tagger');
+            const commonSettings = await ipc.invoke('get-tool-settings', 'common_toolbox_settings');
+            const settings = await ipc.invoke('get-tool-settings', 'gemini_tagger');
 
             if (commonSettings.imageDir) setImageDir(commonSettings.imageDir);
             else if (settings.imageDir) setImageDir(settings.imageDir); // Fallback to local
@@ -42,14 +43,14 @@ export function GeminiTagger() {
             if (settings.modelName) setModelName(settings.modelName);
 
             // Sync running status and logs
-            const status = await window.ipcRenderer.invoke('get-tool-status');
+            const status = await ipc.invoke('get-tool-status');
             if (status.scriptName === 'gemini_concurrent_tagging.py') {
                 setIsRunning(status.isRunning);
             } else {
                 setIsRunning(false);
             }
 
-            const savedLogs = await window.ipcRenderer.invoke('get-tool-logs');
+            const savedLogs = await ipc.invoke('get-tool-logs');
             if (savedLogs && savedLogs.length > 0) {
                 setLogs(savedLogs);
             }
@@ -58,7 +59,7 @@ export function GeminiTagger() {
     }, []);
 
     const saveSettings = async () => {
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'gemini_tagger',
             settings: {
                 apiKeys,
@@ -69,7 +70,7 @@ export function GeminiTagger() {
                 modelName
             }
         });
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'common_toolbox_settings',
             settings: { imageDir }
         });
@@ -86,7 +87,7 @@ export function GeminiTagger() {
     }, [imageDir, apiKeys, prompt, concurrency, apiType, baseUrl, modelName]);
 
     const handleSelectDir = async () => {
-        const result = await window.ipcRenderer.invoke('dialog:openFile', {
+        const result = await ipc.invoke('dialog:openFile', {
             properties: ['openDirectory']
         });
         if (!result.canceled && result.filePaths.length > 0) {
@@ -110,7 +111,7 @@ export function GeminiTagger() {
 
         showToast(t('toolbox.tagging.started'), 'success');
 
-        const result = await window.ipcRenderer.invoke('run-tool', {
+        const result = await ipc.invoke('run-tool', {
             scriptName: 'gemini_concurrent_tagging.py',
             args: [
                 '--dir', imageDir,
@@ -130,7 +131,7 @@ export function GeminiTagger() {
     };
 
     const stopTool = async () => {
-        await window.ipcRenderer.invoke('stop-tool');
+        await ipc.invoke('stop-tool');
         setIsRunning(false);
     };
 
@@ -139,7 +140,7 @@ export function GeminiTagger() {
             showToast(t('toolbox.errors.no_dir'), 'error');
             return;
         }
-        const result = await window.ipcRenderer.invoke('open-path', imageDir);
+        const result = await ipc.invoke('open-path', imageDir);
         if (!result.success) {
             showToast(result.error, 'error');
         }
@@ -168,8 +169,8 @@ export function GeminiTagger() {
             }
         };
 
-        const removeOutput = (window.ipcRenderer as any).on('tool-output', handleOutput);
-        const removeStatus = (window.ipcRenderer as any).on('tool-status', handleStatus);
+        const removeOutput = (ipc as any).on('tool-output', handleOutput);
+        const removeStatus = (ipc as any).on('tool-status', handleStatus);
 
         return () => {
             removeOutput();

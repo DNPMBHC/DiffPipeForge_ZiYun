@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useCallback } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { useTranslation } from 'react-i18next';
@@ -65,11 +66,11 @@ export function ImagePreviewGrid({
         if (!isBackground) setError(null);
 
         try {
-            const res = await window.ipcRenderer.invoke('list-images', { dirPath: directory, limit: currentLimit });
+            const res = await ipc.invoke('list-images', { dirPath: directory, limit: currentLimit });
             if (res.success) {
                 setTotal(res.total || 0);
                 const items = await Promise.all(res.images.map(async (path: string) => {
-                    const thumbnail = await window.ipcRenderer.invoke('get-thumbnail', path);
+                    const thumbnail = await ipc.invoke('get-thumbnail', path);
                     let maskThumbnail = undefined;
 
                     if (showMasks) {
@@ -78,7 +79,7 @@ export function ImagePreviewGrid({
                             // We need to handle path joining properly
                             // For now, let's assume we can invoke a backend helper or do simple string manipulation if guaranteed standard paths
                             // But 'get-mask-thumbnail' effectively does this logic
-                            const maskRes = await window.ipcRenderer.invoke('get-mask-thumbnail', {
+                            const maskRes = await ipc.invoke('get-mask-thumbnail', {
                                 originalPath: path,
                                 maskDirName,
                                 overrideMaskPath
@@ -171,7 +172,7 @@ export function ImagePreviewGrid({
                                 <span className="text-[10px] text-muted-foreground/60 truncate px-0.5">{t('toolbox.mask.original')}</span>
                                 <div
                                     className="aspect-square rounded-md overflow-hidden cursor-pointer bg-black/30"
-                                    onClick={() => window.ipcRenderer.invoke('open-external', item.path)}
+                                    onClick={() => ipc.invoke('open-external', item.path)}
                                 >
                                     <img
                                         src={item.thumbnail}
@@ -234,7 +235,7 @@ export function ImagePreviewGrid({
 
                                     setSelectedFiles(newSet);
                                 } else {
-                                    window.ipcRenderer.invoke('open-external', item.path);
+                                    ipc.invoke('open-external', item.path);
                                 }
                             }}
                             title={item.path}
@@ -299,7 +300,7 @@ export function ImagePreviewGrid({
                             setIsRestoring(true);
                             try {
                                 const filesToRestore = Array.from(selectedFiles);
-                                const result = await window.ipcRenderer.invoke('restore-files', filesToRestore);
+                                const result = await ipc.invoke('restore-files', filesToRestore);
                                 if (result.success) {
                                     toast.success(t('common.restore_success', { count: result.count }));
                                     setSelectedFiles(new Set());

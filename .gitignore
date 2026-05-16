@@ -134,3 +134,4 @@ upload_oss.py
 .env
 *.sha256
 diffusion-pipe
+fingerprints

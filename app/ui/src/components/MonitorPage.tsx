@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { GlassButton } from './ui/GlassButton';
@@ -41,7 +42,7 @@ export function MonitorPage({ className, initialLogDir, projectPath }: MonitorPa
             setIsLoading(true);
             try {
                 // @ts-ignore
-                const status = await window.ipcRenderer.invoke('get-tensorboard-status');
+                const status = await ipc.invoke('get-tensorboard-status');
 
                 // Update settings fields
                 if (status.settings) {
@@ -91,7 +92,7 @@ export function MonitorPage({ className, initialLogDir, projectPath }: MonitorPa
         setIsLoading(true);
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('start-tensorboard', {
+            const result = await ipc.invoke('start-tensorboard', {
                 logDir: effectiveLogDir,
                 host,
                 port
@@ -118,7 +119,7 @@ export function MonitorPage({ className, initialLogDir, projectPath }: MonitorPa
         setIsLoading(true);
         try {
             // @ts-ignore
-            await window.ipcRenderer.invoke('stop-tensorboard');
+            await ipc.invoke('stop-tensorboard');
             setIsRunning(false);
             setMonitorUrl('');
             showToast(t('monitor.stopped'), 'success');
@@ -139,7 +140,7 @@ export function MonitorPage({ className, initialLogDir, projectPath }: MonitorPa
     const handlePickDir = async () => {
         try {
             // @ts-ignore
-            const result = await window.ipcRenderer.invoke('dialog:openFile', {
+            const result = await ipc.invoke('dialog:openFile', {
                 properties: ['openDirectory', 'createDirectory']
             });
             if (!result.canceled && result.filePaths.length > 0) {

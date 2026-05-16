@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { Plus, FolderOpen, Clock, FileCode, Trash2, AlertTriangle } from 'lucide-react';
@@ -30,7 +31,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
     useEffect(() => {
         const loadProjects = async () => {
             try {
-                const recent = await window.ipcRenderer.invoke('get-recent-projects');
+                const recent = await ipc.invoke('get-recent-projects');
                 setProjects(recent);
             } catch (error) {
                 console.error("Failed to load recent projects", error);
@@ -46,7 +47,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
             path,
             lastModified: new Date().toLocaleString()
         };
-        const updated = await window.ipcRenderer.invoke('add-recent-project', project);
+        const updated = await ipc.invoke('add-recent-project', project);
         setProjects(updated);
     };
 
@@ -59,7 +60,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
     const confirmDelete = async () => {
         if (projectToDelete) {
             try {
-                const result = await window.ipcRenderer.invoke('delete-project-folder', projectToDelete);
+                const result = await ipc.invoke('delete-project-folder', projectToDelete);
                 if (result.success) {
                     setProjects(result.projects);
                     showToast(t('common.project_deleted') || 'Project deleted', 'success');
@@ -77,7 +78,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
 
 
     const handleNewProject = async () => {
-        const result = await window.ipcRenderer.invoke('create-new-project');
+        const result = await ipc.invoke('create-new-project');
         if (result.success) {
             await addToHistory(result.path);
             onSelect(result.path);
@@ -117,7 +118,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
                     if (fileName.endsWith('.toml')) {
                         // Reuse TOML logic
                         try {
-                            const content = await window.ipcRenderer.invoke('read-file', filePath);
+                            const content = await ipc.invoke('read-file', filePath);
                             if (content) {
                                 const parsed = parse(content);
                                 let targetName = fileName;
@@ -129,7 +130,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
                                     targetName = 'evaldataset.toml';
                                 }
 
-                                const copyResult = await window.ipcRenderer.invoke('copy-to-date-folder', {
+                                const copyResult = await ipc.invoke('copy-to-date-folder', {
                                     sourcePath: filePath,
                                     filename: targetName
                                 });
@@ -145,7 +146,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
                         } catch (err) { console.error('Full page drop error:', err); }
                     } else {
                         // Folder or other
-                        const result = await window.ipcRenderer.invoke('copy-folder-configs-to-date', {
+                        const result = await ipc.invoke('copy-folder-configs-to-date', {
                             sourceFolderPath: filePath
                         });
                         if (result.success) {
@@ -196,13 +197,13 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
                     <GlassCard
                         className="p-8 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/50 dark:hover:bg-white/10 transition-all group border-dashed border-2 min-h-[200px] hover:scale-[1.02]"
                         onClick={async () => {
-                            const result = await window.ipcRenderer.invoke('dialog:openFile', {
+                            const result = await ipc.invoke('dialog:openFile', {
                                 properties: ['openDirectory']
                             });
                             if (!result.canceled && result.filePaths.length > 0) {
                                 const filePath = result.filePaths[0];
                                 // Prepare the output folder by copying configs
-                                await window.ipcRenderer.invoke('copy-folder-configs-to-date', {
+                                await ipc.invoke('copy-folder-configs-to-date', {
                                     sourceFolderPath: filePath
                                 });
                                 await addToHistory(filePath);
@@ -236,7 +237,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
                                 if (isTomlFile) {
                                     try {
                                         // 1. Read content to determine type
-                                        let content = await window.ipcRenderer.invoke('read-file', filePath);
+                                        let content = await ipc.invoke('read-file', filePath);
                                         let targetName = fileName;
                                         let detectedType: 'train' | 'dataset' | 'evalDataset' | null = null;
                                         let parsed: any = null;
@@ -277,7 +278,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
                                         }
 
                                         // 2. Copy to date folder
-                                        const copyResult = await window.ipcRenderer.invoke('copy-to-date-folder', {
+                                        const copyResult = await ipc.invoke('copy-to-date-folder', {
                                             sourcePath: filePath,
                                             filename: targetName
                                         });
@@ -299,7 +300,7 @@ export function ProjectSelectionPage({ onSelect }: ProjectSelectionPageProps) {
                                         console.error('File drop error:', err);
                                     }
                                 } else {
-                                    const result = await window.ipcRenderer.invoke('copy-folder-configs-to-date', {
+                                    const result = await ipc.invoke('copy-folder-configs-to-date', {
                                         sourceFolderPath: filePath
                                     });
                                     if (result.success) {

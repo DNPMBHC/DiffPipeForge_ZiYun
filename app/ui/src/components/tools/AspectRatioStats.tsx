@@ -1,3 +1,4 @@
+import { ipc } from '@/lib/ipc';
 import { useState, useEffect, useRef } from 'react';
 import { GlassCard } from '../ui/GlassCard';
 import { GlassButton } from '../ui/GlassButton';
@@ -25,24 +26,24 @@ export function AspectRatioStats() {
     useEffect(() => {
         const sync = async () => {
             // Load settings
-            const commonSettings = await window.ipcRenderer.invoke('get-tool-settings', 'common_toolbox_settings');
+            const commonSettings = await ipc.invoke('get-tool-settings', 'common_toolbox_settings');
             if (commonSettings.imageDir) setImageDir(commonSettings.imageDir);
 
-            const toolSettings = await window.ipcRenderer.invoke('get-tool-settings', 'aspect_ratio_stats');
+            const toolSettings = await ipc.invoke('get-tool-settings', 'aspect_ratio_stats');
             if (toolSettings) {
                 if (toolSettings.targetType !== undefined) setTargetType(toolSettings.targetType);
                 if (toolSettings.mode !== undefined) setMode(toolSettings.mode);
                 if (toolSettings.bucketSize !== undefined) setBucketSize(toolSettings.bucketSize);
             }
 
-            const status = await window.ipcRenderer.invoke('get-tool-status');
+            const status = await ipc.invoke('get-tool-status');
             if (status.scriptName === 'aspect_ratio_statistics.py') {
                 setIsRunning(status.isRunning);
             } else {
                 setIsRunning(false);
             }
 
-            const savedLogs = await window.ipcRenderer.invoke('get-tool-logs');
+            const savedLogs = await ipc.invoke('get-tool-logs');
             if (savedLogs && savedLogs.length > 0) {
                 setLogs(savedLogs);
                 // Try to parse results from existing logs if any
@@ -73,13 +74,13 @@ export function AspectRatioStats() {
 
     const saveSettings = async () => {
         // Save shared settings
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'common_toolbox_settings',
             settings: { imageDir }
         });
 
         // Save tool-specific settings
-        await window.ipcRenderer.invoke('save-tool-settings', {
+        await ipc.invoke('save-tool-settings', {
             toolId: 'aspect_ratio_stats',
             settings: { mode, bucketSize, targetType }
         });
@@ -94,7 +95,7 @@ export function AspectRatioStats() {
     }, [imageDir, mode, bucketSize, targetType]);
 
     const handleSelectDir = async () => {
-        const result = await window.ipcRenderer.invoke('dialog:openFile', {
+        const result = await ipc.invoke('dialog:openFile', {
             properties: ['openDirectory']
         });
         if (!result.canceled && result.filePaths.length > 0) {
@@ -123,7 +124,7 @@ export function AspectRatioStats() {
             args.push('--bucket-size', bucketSize || '0.1');
         }
 
-        const result = await window.ipcRenderer.invoke('run-tool', {
+        const result = await ipc.invoke('run-tool', {
             scriptName: 'aspect_ratio_statistics.py',
             args
         });
@@ -135,7 +136,7 @@ export function AspectRatioStats() {
     };
 
     const stopTool = async () => {
-        await window.ipcRenderer.invoke('stop-tool');
+        await ipc.invoke('stop-tool');
         setIsRunning(false);
     };
 
@@ -144,7 +145,7 @@ export function AspectRatioStats() {
             showToast(t('toolbox.errors.no_dir'), 'error');
             return;
         }
-        const result = await window.ipcRenderer.invoke('open-path', imageDir);
+        const result = await ipc.invoke('open-path', imageDir);
         if (!result.success) {
             showToast(result.error, 'error');
         }
@@ -175,8 +176,8 @@ export function AspectRatioStats() {
             }
         };
 
-        const removeOutput = (window.ipcRenderer as any).on('tool-output', handleOutput);
-        const removeStatus = (window.ipcRenderer as any).on('tool-status', handleStatus);
+        const removeOutput = (ipc as any).on('tool-output', handleOutput);
+        const removeStatus = (ipc as any).on('tool-status', handleStatus);
 
         return () => {
             removeOutput();
